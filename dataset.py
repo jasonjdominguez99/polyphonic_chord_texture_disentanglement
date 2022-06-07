@@ -5,9 +5,11 @@ import os
 import pandas as pd
 from score import PolyphonicMusic
 from torch.utils.data import DataLoader
-from converter import ext_nmat_to_pr, ext_nmat_to_mel_pr, \
-    augment_pr, augment_mel_pr, pr_to_onehot_pr, piano_roll_to_target, \
+from converter import (
+    ext_nmat_to_pr, ext_nmat_to_mel_pr, augment_pr, 
+    augment_mel_pr, pr_to_onehot_pr, piano_roll_to_target,
     target_to_3dtarget, expand_chord
+)
 
 
 DATA_PATH = os.path.join('data', 'POP09-PIANOROLL-4-bin-quantization')
@@ -16,7 +18,6 @@ SEED = 3345
 
 
 class ArrangementDataset(Dataset):
-
     def __init__(self, data, indicator, shift_low, shift_high, num_bar=8,
                  ts=4, contain_chord=False):
         super(ArrangementDataset, self).__init__()
@@ -30,12 +31,15 @@ class ArrangementDataset(Dataset):
         self.ts = ts
         self.contain_chord = contain_chord
 
+
     def _get_sample_inds(self):
         valid_inds = []
         for i, ind in enumerate(self.indicator):
             if ind:
                 valid_inds.append(i)
+
         return valid_inds
+
 
     @staticmethod
     def _translate(track, translation):
@@ -44,7 +48,9 @@ class ArrangementDataset(Dataset):
         track = np.copy(track)
         track[:, 0] -= translation
         track[:, 3] -= translation
+
         return track
+
 
     def _combine_segments(self, segment):
         first, second = segment
@@ -60,9 +66,11 @@ class ArrangementDataset(Dataset):
 
         return nmat
 
+
     def __len__(self):
         # consider data augmentation here
         return self.num_sample * (self.shift_high - self.shift_low + 1)
+
 
     def __getitem__(self, id):
         # separate id into (no, shift) pair
@@ -165,7 +173,9 @@ def detrend_pianotree(piano_tree, c):
     notes = np.concatenate([is_notes, is_basses, octaves, degs, n_states, dur],
                            axis=-1)
     notes = notes.reshape((32, 16, -1))
+
     return notes
+
 
 def get_chroma_state(chroma, map_dic):
     chroma_states = np.zeros((8, 7), dtype=int)
@@ -180,7 +190,9 @@ def get_chroma_state(chroma, map_dic):
                                     for cc in chroma[:, [8, 9]]], dtype=int)
     chroma_states[:, 6] = np.array([map_dic[tuple(cc)]
                                     for cc in chroma[:, [10, 11]]], dtype=int)
+
     return chroma_states
+
 
 def convert_note(pitch, chroma_state, root, bass, deg_table, semi_table):
     # chroma state: length 7
@@ -210,6 +222,7 @@ def convert_note(pitch, chroma_state, root, bass, deg_table, semi_table):
         n_state = semitone + 4
     else:
         raise NotImplementedError
+
     return 0, is_bass, octave, scale_deg, n_state
 
 
@@ -225,6 +238,7 @@ def collect_data_fns():
         if int(num_beats) == 2:
             valid_files.append(file)
     print('Selected %d files, all are in duple meter.' % len(valid_files))
+
     return valid_files
 
 
@@ -236,6 +250,7 @@ def init_music(fn):
     bridge = data['bridge']
     piano = data['piano']
     music = PolyphonicMusic([melody, bridge, piano], beat, chord, [70, 0, 0])
+
     return music
 
 
@@ -243,6 +258,7 @@ def split_dataset(length, portion):
     train_ind = np.random.choice(length, int(length * portion / (portion + 1)),
                                  replace=False)
     valid_ind = np.setdiff1d(np.arange(0, length), train_ind)
+
     return train_ind, valid_ind
 
 
@@ -259,6 +275,7 @@ def wrap_dataset(fns, ids, shift_low, shift_high, num_bar=8,
     indicator = np.concatenate(indicator)
     dataset = ArrangementDataset(data, indicator, shift_low, shift_high,
                                  num_bar=num_bar, contain_chord=True)
+
     return dataset
 
 
@@ -278,6 +295,7 @@ def prepare_dataset(seed, bs_train, bs_val,
     print(len(train_set), len(val_set))
     train_loader = DataLoader(train_set, bs_train, random_train)
     val_loader = DataLoader(val_set, bs_val, random_val)
+
     return train_loader, val_loader
 
 

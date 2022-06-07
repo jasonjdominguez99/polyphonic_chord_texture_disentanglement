@@ -12,6 +12,7 @@ def ext_nmat_to_nmat(ext_nmat):
     nmat[:, 1] = ext_nmat[:, 3] + ext_nmat[:, 4] / ext_nmat[:, 5]
     nmat[:, 2] = ext_nmat[:, 6]
     nmat[:, 3] = ext_nmat[:, 7]
+
     return nmat
 
 
@@ -19,6 +20,7 @@ def ext_nmat_to_nmat(ext_nmat):
 #     pr = np.zeros((num_step, 128))
 #     for s, e, p, v in pr:
 #         pr[s, p]
+
 
 def nmat_to_notes(nmat, start, bpm):
     notes = []
@@ -29,6 +31,7 @@ def nmat_to_notes(nmat, start, bpm):
         s = start + s * bpm_to_rate(bpm)
         e = start + e * bpm_to_rate(bpm)
         notes.append(pm.Note(int(v), int(p), s, e))
+
     return notes
 
 
@@ -43,6 +46,7 @@ def ext_nmat_to_pr(ext_nmat, num_step=32):
             p = int(p)
             pr[s_ind, p] = 2
             pr[s_ind + 1: e_ind, p] = 1  # note not including the last ind
+
     return pr
 
 
@@ -59,6 +63,7 @@ def ext_nmat_to_mel_pr(ext_nmat, num_step=32):
             pr[s_ind, p] = 1
             pr[s_ind: e_ind, 129] = 0
             pr[s_ind + 1: e_ind, 128] = 1  # note not including the last ind
+
     return pr
 
 
@@ -72,8 +77,11 @@ def augment_mel_pr(pr, shift=0):
     # it only works on single mel_pr. Not on array of it.
     pitch_part = np.roll(pr[:, 0: 128], shift, axis=-1)
     control_part = pr[:, 128:]
-    augmented_pr = np.concatenate([pitch_part, control_part], axis=-1)
+    augmented_pr = np.concatenate([pitch_part, control_part],
+                                  axis=-1)
+
     return augmented_pr
+
 
 def pr_to_onehot_pr(pr):
     onset_data = pr[:, :] == 2
@@ -81,6 +89,7 @@ def pr_to_onehot_pr(pr):
     silence_data = pr[:, :] == 0
     pr = np.stack([onset_data, sustain_data, silence_data],
                   axis=-1).astype(np.int64)
+
     return pr
 
 
@@ -88,16 +97,21 @@ def piano_roll_to_target(pr):
     #  pr: (32, 128, 3), dtype=bool
 
     # Assume that "not (first_layer or second layer) = third_layer"
-    pr[:, :, 1] = np.logical_not(np.logical_or(pr[:, :, 0], pr[:, :, 2]))
+    pr[:, :, 1] = np.logical_not(
+        np.logical_or(pr[:, :, 0], pr[:, :, 2])
+    )
     # To int dtype can make addition work
     pr = pr.astype(int)
-    # Initialize a matrix to store the duration of a note on the (32, 128) grid
+    # Initialize a matrix to store the duration of a 
+    # note on the (32, 128) grid
     pr_matrix = np.zeros((32, 128))
 
     for i in range(31, -1, -1):
         # At each iteration
-        # 1. Assure that the second layer accumulates the note duration
-        # 2. collect the onset notes in time step i, and mark it on the matrix.
+        # 1. Assure that the second layer accumulates the
+        #    note duration
+        # 2. collect the onset notes in time step i, and mark 
+        #    it on the matrix.
 
         # collect
         onset_idx = np.where(pr[i, :, 0] == 1)[0]
@@ -110,12 +124,14 @@ def piano_roll_to_target(pr):
 
         pr[i, onset_idx, 1] = 0  # the onset note should be set 0.
         pr[i - 1, :, 1] += pr[i, :, 1]
+
     return pr_matrix
 
 
-def target_to_3dtarget(pr_mat, max_note_count=11, max_pitch=107, min_pitch=22,
-                       pitch_pad_ind=88, dur_pad_ind=2,
-                       pitch_sos_ind=86, pitch_eos_ind=87):
+def target_to_3dtarget(pr_mat, max_note_count=11, max_pitch=107, 
+                       min_pitch=22, pitch_pad_ind=88,
+                       dur_pad_ind=2, pitch_sos_ind=86,
+                       pitch_eos_ind=87):
     """
     :param pr_mat: (32, 128) matrix. pr_mat[t, p] indicates a note of pitch p,
     started at time step t, has a duration of pr_mat[t, p] time steps.
@@ -144,6 +160,7 @@ def target_to_3dtarget(pr_mat, max_note_count=11, max_pitch=107, min_pitch=22,
             np.fromstring(' '.join(list(binary)), dtype=int, sep=' ')
         cur_idx[t] += 1
     pr_mat3d[np.arange(0, 32), cur_idx, 0] = pitch_eos_ind
+
     return pr_mat3d
 
 
@@ -161,4 +178,5 @@ def expand_chord(chord, shift, relative=False):
     #     chroma = np.roll(chroma, int(root))
     # print(chroma)
     # print('----------')
+
     return np.concatenate([root_onehot, chroma, bass_onehot])

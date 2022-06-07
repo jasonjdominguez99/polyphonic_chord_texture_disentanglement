@@ -10,6 +10,7 @@ def get_valid_song_inds(valid_inds, min_bars=16):
     inds = []
     lengths = []
     length = 0
+
     for vi, i in enumerate(valid_inds):
         if length == 0:
             start_ind = i
@@ -28,6 +29,7 @@ def get_valid_song_inds(valid_inds, min_bars=16):
         if i == valid_inds[-1] and length + 3 >= min_bars:
             inds.append(record_ind)
             lengths.append(length)
+
     return inds, lengths
 
 
@@ -38,27 +40,32 @@ def get_whole_song_data(dataset, start_ind, length, shift=0):
     accs = []
     chords = []
     dt_xs = []
+
     for i in range(start_ind + shift, start_ind + length):
         if (i - start_ind - shift) % 2 != 0:
             continue
-        mel_segments, pr, pr_mat, p_grids, chord, dt_x = dataset[i]
+
+        (mel_segments, pr, pr_mat, 
+         p_grids, chord, dt_x) = dataset[i]
         mels.append(mel_segments)
+
         prs.append(pr)
         pr_mats.append(pr_mat)
         accs.append(p_grids)
         chords.append(chord)
         dt_xs.append(dt_x)
+
     mels = torch.from_numpy(np.array(mels))
     pr = torch.from_numpy(np.array(pr))
     pr_mats = torch.from_numpy(np.array(pr_mats))
     accs = torch.from_numpy(np.array(accs))
     chords = torch.from_numpy(np.array(chords))
     dt_xs = torch.from_numpy(np.array(dt_xs))
+
     return mels, pr, pr_mats, accs, chords, dt_xs
 
 
 class SongDataset:
-
     def __init__(self, dataset):
         self.dataset = dataset
         song_ind, song_len = get_valid_song_inds(dataset.valid_inds,
@@ -66,20 +73,25 @@ class SongDataset:
         self.song_ind = song_ind
         self.song_len = song_len
 
+
     def get_song_batch(self, song_id, length=None, shift=0):
         if length is None:
             length = self.song_len[song_id]
         assert length + shift <= self.song_len[song_id]
-        batch = get_whole_song_data(self.dataset, self.song_ind[song_id],
-                                    length + shift, shift)
+
+        batch = get_whole_song_data(
+            self.dataset, self.song_ind[song_id],
+            length + shift, shift
+        )
+
         return batch
 
 
 class SongDatasets:
-
     def __init__(self, train_dataset, val_dataset):
         self.song_dataset_t = SongDataset(train_dataset)
         self.song_dataset_v = SongDataset(val_dataset)
+
 
     def get_song_batch(self, dataset_id, song_id, length, shift):
         if dataset_id == 0:
@@ -87,7 +99,9 @@ class SongDatasets:
         else:
             dataset = self.song_dataset_v
         batch = dataset.get_song_batch(song_id, length, shift)
+
         return batch
+
 
     def valid_length(self, dataset_id, song_id,  length):
         if length is not None:
@@ -96,7 +110,9 @@ class SongDatasets:
             dataset = self.song_dataset_t
         else:
             dataset = self.song_dataset_v
+
         return dataset.song_len[song_id]
+
 
     def get_msg(self, dataset_id, song_id, length, shift):
         if dataset_id == 0:
@@ -105,19 +121,19 @@ class SongDatasets:
             dataset = self.song_dataset_v
         if length is None:
             length = dataset.song_len[song_id]
+
         return '_'.join([str(dataset_id), str(song_id),
                          str(length), str(shift)])
 
 
 if __name__ == '__main__':
     batch_size = 32
-    data_loaders = \
-        MusicDataLoaders.get_loaders(SEED, bs_train=batch_size,
-                                     bs_val=batch_size,
-                                     portion=8, shift_low=-6, shift_high=5,
-                                     num_bar=2,
-                                     contain_chord=True, random_train=False,
-                                     random_val=False)
+    data_loaders = MusicDataLoaders.get_loaders(
+        SEED, bs_train=batch_size, bs_val=batch_size,
+        portion=8, shift_low=-6, shift_high=5,
+        num_bar=2, contain_chord=True, random_train=False,
+        random_val=False
+    )
     train_loader = data_loaders.train_loader
     val_loader = data_loaders.val_loader
 
@@ -132,4 +148,3 @@ if __name__ == '__main__':
             print(b.size())
         if i == 2:
             break
-

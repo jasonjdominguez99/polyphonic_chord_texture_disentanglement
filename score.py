@@ -4,7 +4,6 @@ import numpy as np
 
 
 class PolyphonicMusic:
-
     def __init__(self, tracks, beat_table, chord_table, instrument_list=None,
                  track_name_list=None, bpm=120.):
         self.tracks = tracks
@@ -25,13 +24,16 @@ class PolyphonicMusic:
             self.track_name_list = track_name_list
         self.bpm = bpm
 
+
     def _select_track(self, track_ind=None, track_name=None):
         if track_ind is None and track_name is None:
             track_ind = 0
         elif track_ind is None:
             track_ind = self.track_name_list.index(track_name)
         track = self.tracks[track_ind]
+
         return track
+
 
     def _break_track_to_bars(self, track, db_pos=None, db_ts=None):
         # return a list of bars
@@ -45,25 +47,32 @@ class PolyphonicMusic:
                 np.where(np.logical_and(track[:, 0] >= s, track[:, 0] < e))[0]
             bar_track = track[note_inds]
             bar_tracks.append(bar_track)
+
         return bar_tracks
+
 
     def _break_chord_to_bars(self, track, db_pos=None, db_ts=None):
         if db_pos is None or db_ts is None:
             db_pos, db_ts = self.beat_track.get_downbeats()
         bar_chord = []
-        for s, e in zip(db_pos, np.append(db_pos[1: ],
-                                          db_pos[-1] + db_ts[-1])):
+        for s, e in zip(
+            db_pos, np.append(db_pos[1: ], db_pos[-1] + db_ts[-1])):
+
             bar_chord.append(self.chord_table[s: e])
+
         return bar_chord
 
     def break_tracks_to_bars(self, db_pos=None, db_ts=None):
         if db_pos is None or db_ts is None:
             db_pos, db_ts = self.beat_track.get_downbeats()
-        broken_tracks = \
-            [self._break_track_to_bars(track, db_pos, db_ts)
-             for track in self.tracks]
+        broken_tracks = [
+            self._break_track_to_bars(track, db_pos, db_ts)
+            for track in self.tracks
+        ]
         broken_tracks = [list(bar) for bar in zip(*broken_tracks)]
+
         return broken_tracks
+
 
     def prepare_data(self, num_bar=8, ts=4, mel_id=(0,), acc_id=(1, 2)):
         # Indicator == 1 if
@@ -86,6 +95,7 @@ class PolyphonicMusic:
                 return track
             track[:, 0] -= translation
             track[:, 3] -= translation
+
             return track
 
         db_pos, db_ts = self.beat_track.get_downbeats()
@@ -120,7 +130,9 @@ class PolyphonicMusic:
                 indicator[i] = 0
                 continue
             indicator[i] = 1
+
         return data_track, indicator, db_pos
+
 
     def regularize_chord_table(self):
         pre_cat = np.zeros((self.beat_track.translation,
@@ -129,20 +141,33 @@ class PolyphonicMusic:
         post_cat = np.zeros((self.beat_track.post_translation,
                              self.chord_table.shape[1]),
                             dtype=self.chord_table.dtype)
-        self.chord_table = \
-            np.concatenate([pre_cat, self.chord_table, post_cat], axis=0)
+        self.chord_table = (
+            np.concatenate(
+                [pre_cat, self.chord_table, post_cat],
+                axis=0
+            )
+        )
+            
 
     def regularize_track(self, track):
         track[:, 0] += self.beat_track.translation
         track[:, 3] += self.beat_track.translation
+
         return track
 
+
     def regularize_tracks(self):
-        self.tracks = [self.regularize_track(track) for track in self.tracks]
+        self.tracks = [
+            self.regularize_track(track)
+            for track in self.tracks
+        ]
+
 
     def convert_track_to_nmat(self, track_ind=None, track_name=None):
         track = self._select_track(track_ind, track_name)
+
         return ext_nmat_to_nmat(track)
+
 
     def convert_track_to_notes(self, track_ind=None, track_name=None,
                                start=0., bpm=None):
@@ -150,7 +175,9 @@ class PolyphonicMusic:
             bpm = self.bpm
         nmat = self.convert_track_to_nmat(track_ind, track_name)
         notes = nmat_to_notes(nmat, start, bpm)
+
         return notes
+
 
     def convert_tracks(self, track_ids=None, track_names=None,
                        start=0., bpm=None):
@@ -165,7 +192,9 @@ class PolyphonicMusic:
             notes = self.convert_track_to_notes(track_id, track_name,
                                                 start, bpm)
             track_notes.append(notes)
+
         return track_notes
+
 
     def export_to_pretty_midi(self, track_ids=None, track_names=None,
                               start=0., bpm=None):
@@ -187,7 +216,9 @@ class PolyphonicMusic:
             instrument = pm.Instrument(inst, name=name)
             instrument.notes = notes
             midi.instruments.append(instrument)
+
         return midi
+
 
     def write_midi(self, fn, track_ids=None, track_names=None,
                    start=0., bpm=None):
@@ -197,7 +228,6 @@ class PolyphonicMusic:
 
 
 class BeatTrack:
-
     def __init__(self, beat_table, require_regularize=True):
         self.beat_table = beat_table
         self.translation = 0
@@ -206,15 +236,24 @@ class BeatTrack:
             self.regularize_beat_table()
         self.regularized_track = self._is_regularized_track()
 
+
     def _is_regularized_track(self):
-        return self._is_pre_regularized_track() and \
-               self._is_post_regularized_track()
+        return (
+            self._is_pre_regularized_track()
+            and self._is_post_regularized_track()
+        )
+
 
     def _is_pre_regularized_track(self):
         return self.beat_table[0, 3] == 0
 
+
     def _is_post_regularized_track(self):
-        return self.beat_table[-1, 3] == self.beat_table[-1, 5] - 1
+        return (
+            self.beat_table[-1, 3]
+            == self.beat_table[-1, 5] - 1
+        )
+
 
     def _fill_pre_beat(self):
         """Add a beat row to the previous table"""
@@ -229,6 +268,7 @@ class BeatTrack:
         pre_beat = np.expand_dims(pre_beat, 0)
         self.beat_table = np.concatenate([pre_beat, self.beat_table], axis=0)
 
+
     def _fill_post_beat(self):
         cur_beat = self.beat_table[0]
         post_beat = np.copy(cur_beat)
@@ -241,9 +281,11 @@ class BeatTrack:
         post_beat = np.expand_dims(post_beat, 0)
         self.beat_table = np.concatenate([self.beat_table, post_beat], axis=0)
 
+
     def _renumber_beat(self):
         self.beat_table[:, 1] -= self.beat_table[0, 1]
         self.beat_table[:, 4] -= self.beat_table[0, 4]
+
 
     def regularize_beat_table(self):
         while not self.beat_table[0, 3] == 0:
@@ -253,10 +295,13 @@ class BeatTrack:
             self._fill_post_beat()
             self.post_translation += 1
 
+
     def get_downbeats(self):
         db_pos = np.where(self.beat_table[:, 3] == 0)[0]
         db_ts = self.beat_table[db_pos, 5]
+
         return db_pos, db_ts
+
 
     def get_time_signature_change(self):
         if not self.regularized_track:
@@ -267,5 +312,5 @@ class BeatTrack:
                             np.where(beat_info[1:] !=
                                      np.roll(beat_info, 1)[1:])[0] + 1])
         ts_values = self.beat_table[ts_change_pos, 5]
-        return ts_change_pos, ts_values
 
+        return ts_change_pos, ts_values
