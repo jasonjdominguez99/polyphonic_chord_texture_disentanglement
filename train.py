@@ -26,20 +26,7 @@ def get_hyperparameters(config_file_path):
     return args
 
 
-def main():
-    model_config_path = "poly_chord_model_config.json"
-    args = get_hyperparameters(model_config_path)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    parallel = args["parallel"] == "True"       # converting from json string to bool
-    parallel = (
-        parallel
-        if torch.cuda.is_available() and torch.cuda.device_count() > 1
-        else False
-    )
-
-    # difine model
+def define_poly_chord_model(args, device):
     chd_encoder = RnnEncoder(
         args["chd_encoder_input_dim"],
         args["chd_encoder_hidden_dim"],
@@ -66,6 +53,25 @@ def main():
         chd_encoder, rhy_encoder, 
         pt_decoder, chd_decoder
     )
+
+    return model
+
+
+def main():
+    model_config_path = "poly_chord_model_config.json"
+    args = get_hyperparameters(model_config_path)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    parallel = args["parallel"] == "True"       # converting from json string to bool
+    parallel = (
+        parallel
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1
+        else False
+    )
+
+    # define model
+    model = define_poly_chord_model(args, device)
 
     # data loaders
     data_loaders = (
